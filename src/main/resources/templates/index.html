@@ -7,10 +7,22 @@
         <div class="card-body p-5 bg-light">
             <div class="display-4">Анализатор страниц</div>
             <p class="lead">Бесплатно прверяйте сайты на SEO пригодность</p>
-            <hr>
-            <a class="btn btn-primary" href="https://ru.hexlet.io" target="_blank">Узнать Больше</a>
+            <form action="/urls" method="post">
+                <div class="mb-3">
+                    <label for="url" class="form-label">Ссылка</label>
+                    <input type="text" class="form-control" id="url" name="url" aria-describedby="urlHelp">
+                    <div id="urlHelp" class="form-text">Пример: https://www.example.com</div>
+                </div>
+                <button type="submit" class="btn btn-primary">Проверить</button>
+            </form>
         </div>
+
     </div>
+
+
+
+
+    </form>
 </section>
 
 </html>
