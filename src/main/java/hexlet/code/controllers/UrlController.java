@@ -1,7 +1,6 @@
 package hexlet.code.controllers;
 
 import hexlet.code.domain.Url;
-import io.ebeaninternal.server.util.Str;
 import io.javalin.http.Handler;
 import hexlet.code.domain.query.QUrl;
 
