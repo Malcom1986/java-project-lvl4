@@ -69,6 +69,50 @@ public class AppTest {
     }
 
     @Test
+    @Transactional
+    void testAddIncorrectUrl() {
+        var postResponse = Unirest
+                .post("/urls")
+                .field("url", "incorrect")
+                .asEmpty();
+
+        assertThat(postResponse.getStatus()).isEqualTo(302);
+
+        var getResponse = Unirest.get("/urls").asString();
+
+        assertThat(getResponse.getBody()).contains("Некорректный URL");
+
+        var actual = new QUrl()
+                .name
+                .equalTo("incorrect")
+                .findOne();
+
+        assertThat(actual).isNull();
+    }
+
+    @Test
+    @Transactional
+    void testAddDuplicateUrl() {
+        var postResponse = Unirest
+                .post("/urls")
+                .field("url", "https://testurl.ru")
+                .asEmpty();
+
+        assertThat(postResponse.getStatus()).isEqualTo(302);
+
+        var getResponse = Unirest.get("/urls").asString();
+
+        assertThat(getResponse.getBody()).contains("Страница уже существует");
+
+        var actual = new QUrl()
+                .name
+                .equalTo("https://testurl.ru")
+                .findList();
+
+        assertThat(actual.size()).isEqualTo(1);
+    }
+
+    @Test
     void testShowUrl() {
         var response = Unirest.get("/urls/" + existingUrl.getId()).asString();
 
