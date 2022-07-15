@@ -8,24 +8,29 @@
 
 <section layout:fragment="content">
 
-    <table class="table table-striped">
+    <table class="table table-bordered table-hover mt-3">
         <thead>
         <tr>
             <th class="col-1">ID</th>
-            <th class="col-3">Имя</th>
+            <th>Имя</th>
+            <th class="col-2">Последняя проверка</th>
+            <th class="col-1">Код ответа</th>
         </tr>
         </thead>
         <tbody>
-        <tr th:each="url : ${urls}" th:object="${url}">
+        <tr th:each="url : ${urls}" th:object="${url}" th:with="urlChecks=${url.getChecks()}">
             <td th:text="*{getId()}"></td>
             <td>
                 <a th:href="@{/urls/{id}(id=*{getId()})}" th:text="*{getName()}"></a>
             </td>
+            <td th:text="${urlChecks.size() > 0 ? #temporals.format(urlChecks.get(urlChecks.size() - 1).getCreatedAt(), 'dd/MM/yyyy HH:mm') : ''}"></td>
+            <td th:text="${urlChecks.size() > 0 ? urlChecks.get(urlChecks.size() - 1).getStatusCode() : ''}"></td>
         </tr>
         </tbody>
     </table>
 
-<!--    <nav aria-label="Page navigation" th:if="${#lists.size(pages)}">-->
+
+    <!--    <nav aria-label="Page navigation" th:if="${#lists.size(pages)}">-->
 <!--        <ul class="pagination justify-content-center mt-5">-->
 <!--            <li th:class="'page-item' + ${currentPage <= 1 ? ' disabled' : ''}">-->
 <!--                <a class="page-link" th:href="@{/articles(page=${currentPage - 1})}">Previous</a>-->

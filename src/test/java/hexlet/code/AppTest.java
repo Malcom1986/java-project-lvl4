@@ -66,6 +66,7 @@ public class AppTest {
                 .findOne();
 
         assertThat(actual).isNotNull();
+        assertThat(actual.getName()).isEqualTo("http://example.com");
     }
 
     @Test

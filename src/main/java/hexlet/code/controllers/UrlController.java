@@ -1,8 +1,11 @@
 package hexlet.code.controllers;
 
 import hexlet.code.domain.Url;
+import hexlet.code.domain.UrlCheck;
 import io.javalin.http.Handler;
 import hexlet.code.domain.query.QUrl;
+import io.javalin.http.NotFoundResponse;
+import kong.unirest.Unirest;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -46,12 +49,35 @@ public class UrlController {
         List<Url> urls = new QUrl().findList();
         ctx.attribute("urls", urls);
         ctx.render("urls/index.html");
+
     };
 
     public static Handler showUrl = ctx -> {
         var id = ctx.pathParamAsClass("id", Integer.class).getOrDefault(null);
-        Url url = new QUrl().id.equalTo(id).findOne();
+        var url = new QUrl().id.equalTo(id).findOne();
+
         ctx.attribute("url", url);
         ctx.render("urls/show.html");
+    };
+
+    public static Handler checkUrl = ctx -> {
+        var urlId = ctx.pathParamAsClass("id", Integer.class).getOrDefault(null);
+        var url = new QUrl().id.equalTo(urlId).findOne();
+
+        if (url == null) {
+            throw new NotFoundResponse();
+        }
+
+        var response = Unirest.get(url.getName()).asString();
+        var check = new UrlCheck(
+                response.getStatus(),
+                "TestTitle",
+                "TestHeader",
+                "Test description"
+        );
+        url.getChecks().add(check);
+        url.save();
+
+        ctx.redirect("/urls/" + urlId);
     };
 }
