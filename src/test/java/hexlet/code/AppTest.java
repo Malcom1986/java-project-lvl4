@@ -2,9 +2,12 @@ package hexlet.code;
 
 import hexlet.code.domain.Url;
 import hexlet.code.domain.query.QUrl;
+import hexlet.code.domain.query.QUrlCheck;
 import io.ebean.annotation.Transactional;
 import io.javalin.Javalin;
 import kong.unirest.Unirest;
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -14,8 +17,10 @@ public class AppTest {
     private static Javalin app;
     private static Url existingUrl;
 
+    private static MockWebServer server;
+
     @BeforeAll
-    public static void startApp() {
+    public static void startApp() throws Exception {
         app = App.getApp();
         app.start(0);
         var port = app.port();
@@ -23,11 +28,19 @@ public class AppTest {
         existingUrl = new Url("https://testurl.ru");
         existingUrl.save();
         Unirest.config().defaultBaseUrl(baseUrl);
+
+        server = new MockWebServer();
+        MockResponse response = new MockResponse().setBody("hello");
+        server.enqueue(response);
+        server.start();
+
     }
 
     @AfterAll
-    public static void stopApp() {
+    public static void stopApp() throws Exception {
+        server.shutdown();
         app.stop();
+
     }
 
 
@@ -119,5 +132,50 @@ public class AppTest {
 
         assertThat(response.getStatus()).isEqualTo(200);
         assertThat(response.getBody()).contains("https://testurl.ru");
+    }
+
+    @Test
+    @Transactional
+    void testCheckUrl() {
+        var mockUrl = server.url("/").toString().replaceAll("/$", "");
+        var addResponse = Unirest
+                .post("/urls")
+                .field("url", mockUrl)
+                .asString();
+
+        assertThat(addResponse.getStatus()).isEqualTo(302);
+
+        var actualUrl = new QUrl().name.equalTo(mockUrl).findOne();
+
+        assertThat(actualUrl).isNotNull();
+        assertThat(actualUrl.getName()).isEqualTo(mockUrl);
+
+        var postResponse = Unirest
+                .post("/urls/" + actualUrl.getId() + "/checks")
+                .asEmpty();
+
+        assertThat(postResponse.getStatus()).isEqualTo(302);
+
+        var getResponse = Unirest
+                .get("/urls/" + actualUrl.getId())
+                .asString();
+
+        assertThat(getResponse.getStatus()).isEqualTo(200);
+        assertThat(getResponse.getBody()).contains("Страница успешно проверена!");
+
+        var urlCheck = new QUrlCheck()
+                .url
+                .equalTo(actualUrl).
+                findOne();
+
+        assertThat(urlCheck).isNotNull();
+        assertThat(urlCheck.getStatusCode()).isEqualTo(200);
+        assertThat(urlCheck.getH1()).isEqualTo("TestHeader");
+        assertThat(urlCheck.getTitle()).isEqualTo("TestTitle");
+        assertThat(urlCheck.getDescription()).isEqualTo("Test description");
+
+
+
+
     }
 }

@@ -27,6 +27,7 @@ public class UrlController {
             url = new URL(rawUrl);
         } catch (MalformedURLException e) {
             ctx.sessionAttribute("flash", "Некорректный URL");
+            ctx.sessionAttribute("flash-type", "danger");
             ctx.redirect("/");
             return;
         }
@@ -35,6 +36,7 @@ public class UrlController {
 
         if (new QUrl().name.equalTo(name).findOne() != null) {
             ctx.sessionAttribute("flash", "Страница уже существует");
+            ctx.sessionAttribute("flash-type", "warning");
             ctx.redirect("/");
             return;
         }
@@ -42,6 +44,7 @@ public class UrlController {
         var newUrl = new Url(name);
         newUrl.save();
         ctx.sessionAttribute("flash", "Страница успешно добавлена");
+        ctx.sessionAttribute("flash-type", "success");
         ctx.redirect("/");
     };
 
@@ -78,6 +81,8 @@ public class UrlController {
         url.getChecks().add(check);
         url.save();
 
+        ctx.sessionAttribute("flash", "Страница успешно проверена!");
+        ctx.sessionAttribute("flash-type", "success");
         ctx.redirect("/urls/" + urlId);
     };
 }
