@@ -6,6 +6,7 @@ import io.javalin.http.Handler;
 import hexlet.code.domain.query.QUrl;
 import io.javalin.http.NotFoundResponse;
 import kong.unirest.Unirest;
+import org.jsoup.Jsoup;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -72,11 +73,16 @@ public class UrlController {
         }
 
         var response = Unirest.get(url.getName()).asString();
+        var document = Jsoup.parse(response.getBody());
+        var title = document.title();
+        var h1 = document.selectFirst("h1").text();
+        var description = document.selectFirst("meta[name=description]").attr("content");
+
         var check = new UrlCheck(
                 response.getStatus(),
-                "TestTitle",
-                "TestHeader",
-                "Test description"
+                title,
+                h1,
+                description
         );
         url.getChecks().add(check);
         url.save();
