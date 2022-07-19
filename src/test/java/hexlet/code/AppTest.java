@@ -80,6 +80,7 @@ public class AppTest {
                 .asEmpty();
 
         assertThat(postResponse.getStatus()).isEqualTo(302);
+        assertThat(postResponse.getHeaders().getFirst("Location")).isEqualTo("/urls");
 
         var getResponse = Unirest.get("/urls").asString();
         var body = getResponse.getBody();
@@ -126,6 +127,7 @@ public class AppTest {
                 .asEmpty();
 
         assertThat(postResponse.getStatus()).isEqualTo(302);
+        assertThat(postResponse.getHeaders().getFirst("Location")).isEqualTo("/urls");
 
         var getResponse = Unirest.get("/urls").asString();
 
