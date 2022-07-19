@@ -72,23 +72,26 @@ public class UrlController {
             throw new NotFoundResponse();
         }
 
-        var response = Unirest.get(url.getName()).asString();
-        var document = Jsoup.parse(response.getBody());
-        var title = document.title();
-        var h1 = document.selectFirst("h1").text();
-        var description = document.selectFirst("meta[name=description]").attr("content");
+        try {
+            var response = Unirest.get(url.getName()).asString();
+            var status = response.getStatus();
+            var document = Jsoup.parse(response.getBody());
+            var title = document.title();
+            var h1Doc = document.selectFirst("h1");
+            var h1 = h1Doc == null ? "" : h1Doc.text();
+            var descriptionDoc = document.selectFirst("meta[name=description]");
+            var description = descriptionDoc == null ? "" : descriptionDoc.attr("content");
 
-        var check = new UrlCheck(
-                response.getStatus(),
-                title,
-                h1,
-                description
-        );
-        url.getChecks().add(check);
-        url.save();
+            var check = new UrlCheck(status, title, h1, description);
+            url.getChecks().add(check);
+            url.save();
 
-        ctx.sessionAttribute("flash", "Страница успешно проверена!");
-        ctx.sessionAttribute("flash-type", "success");
+            ctx.sessionAttribute("flash", "Страница успешно проверена!");
+            ctx.sessionAttribute("flash-type", "success");
+        } catch (Exception e) {
+            ctx.sessionAttribute("flash", "Страница не существует");
+            ctx.sessionAttribute("flash-type", "warning");
+        }
         ctx.redirect("/urls/" + urlId);
     };
 }
