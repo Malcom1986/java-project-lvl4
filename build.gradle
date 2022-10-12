@@ -76,6 +76,26 @@ jacocoTestReport {
     }
 }
 
+// jar {
+//   manifest {
+//     attributes(
+//       'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+//       'Main-Class': 'hexlet.code.App'
+//     )
+//   }
+// }
+
+jar {
+  manifest {
+    attributes "Main-Class": "hexlet.code.App"
+  }
+
+  from {
+    configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+  }
+  duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+}
+
 checkstyle {
     toolVersion '10.0'
 }
