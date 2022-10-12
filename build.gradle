@@ -62,8 +62,8 @@ application {
     mainClass = 'hexlet.code.App'
 }
 
-// task stage(dependsOn: ['clean', 'installDist'])
-// installDist.mustRunAfter clean
+task stage(dependsOn: ['clean', 'installDist'])
+installDist.mustRunAfter clean
 
 task generateMigrations(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
@@ -78,23 +78,14 @@ jacocoTestReport {
 
 // jar {
 //   manifest {
-//     attributes(
-//       'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
-//       'Main-Class': 'hexlet.code.App'
-//     )
+//     attributes "Main-Class": "hexlet.code.App"
 //   }
+
+//   from {
+//     configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+//   }
+//   duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
 // }
-
-jar {
-  manifest {
-    attributes "Main-Class": "hexlet.code.App"
-  }
-
-  from {
-    configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-  }
-  duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
-}
 
 checkstyle {
     toolVersion '10.0'
