@@ -10,7 +10,6 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
-import gg.jte.extension.api.JteConfig;
 import gg.jte.resolve.DirectoryCodeResolver;
 import hexlet.code.repository.BaseRepository;
 import hexlet.code.util.NamedRoutes;
