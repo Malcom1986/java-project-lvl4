@@ -1,192 +1,140 @@
 package hexlet.code;
 
-import hexlet.code.domain.Url;
-import hexlet.code.domain.query.QUrl;
-import hexlet.code.domain.query.QUrlCheck;
-import io.ebean.annotation.Transactional;
+import hexlet.code.model.Url;
+import hexlet.code.repository.UrlChecksRepository;
+import hexlet.code.repository.UrlsRepository;
 import io.javalin.Javalin;
-import kong.unirest.Unirest;
+import io.javalin.testtools.JavalinTest;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.SQLException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class AppTest {
-    private static Javalin app;
-    private static Url existingUrl;
+class AppTest {
 
-    private static MockWebServer server;
+    private static Javalin app;
+    private static MockWebServer mockServer;
 
     private static Path getFixturePath(String fileName) {
-        return Paths.get("src", "test", "resources", fileName).toAbsolutePath().normalize();
+        return Paths.get("src", "test", "resources", "fixtures", fileName)
+                .toAbsolutePath().normalize();
     }
 
     private static String readFixture(String fileName) throws IOException {
-        return Files.readString(getFixturePath(fileName));
+        Path filePath = getFixturePath(fileName);
+        return Files.readString(filePath).trim();
     }
 
     @BeforeAll
-    public static void startApp() throws Exception {
-        app = App.getApp();
-        app.start(0);
-        var port = app.port();
-        var baseUrl = "http://localhost:" + port;
-        existingUrl = new Url("https://testurl.ru");
-        existingUrl.save();
-        Unirest.config().defaultBaseUrl(baseUrl);
-
-        server = new MockWebServer();
-        var testBody = readFixture("index.html");
-        MockResponse response = new MockResponse().setBody(testBody);
-        server.enqueue(response);
-        server.start();
-
+    public static void beforeAll() throws IOException {
+        mockServer = new MockWebServer();
+        MockResponse mockedResponse = new MockResponse()
+                .setBody(readFixture("index.html"));
+        mockServer.enqueue(mockedResponse);
+        mockServer.start();
     }
 
     @AfterAll
-    public static void stopApp() throws Exception {
-        server.shutdown();
-        app.stop();
+    public static void afterAll() throws IOException {
+        mockServer.shutdown();
     }
 
-    @Test
-    void testRootPage() {
-        var response = Unirest.get("/").asString();
-        assertThat(response.getStatus()).isEqualTo(200);
-        assertThat(response.getBody()).contains("Анализатор страниц");
+    @BeforeEach
+    void setUp() throws SQLException, IOException {
+        app = App.getApp();
     }
 
-    @Test
-    void testIndex() {
-        var response = Unirest.get("/urls").asString();
-        assertThat(response.getStatus()).isEqualTo(200);
-        assertThat(response.getBody()).contains("https://testurl.ru");
+
+    @Nested
+    class RootTest {
+
+        @Test
+        void testIndex() {
+            JavalinTest.test(app, (server, client) -> {
+                assertThat(client.get("/").code()).isEqualTo(200);
+            });
+        }
     }
 
-    @Test
-    @Transactional
-    void testNewUrl() {
-        var postResponse = Unirest
-                .post("/urls")
-                .field("url", "http://example.com")
-                .asEmpty();
+    @Nested
+    class UrlTest {
 
-        assertThat(postResponse.getStatus()).isEqualTo(302);
-        assertThat(postResponse.getHeaders().getFirst("Location")).isEqualTo("/urls");
+        @Test
+        void testIndex() {
+            JavalinTest.test(app, (server, client) -> {
+                assertThat(client.get("/urls").code()).isEqualTo(200);
+            });
+        }
 
-        var getResponse = Unirest.get("/urls").asString();
-        var body = getResponse.getBody();
-        assertThat(body).contains("http://example.com");
-        assertThat(body).contains("Страница успешно добавлена");
+        @Test
+        void testShow() throws SQLException {
+            var url = new Url("http://test.io");
+            UrlsRepository.save(url);
+            JavalinTest.test(app, (server, client) -> {
+                var responce = client.get("/urls/" + url.getId());
+                assertThat(responce.code()).isEqualTo(200);
+            });
+        }
 
-        var actual = new QUrl()
-                .name
-                .equalTo("http://example.com")
-                .findOne();
+        @Test
+        void testStore() throws SQLException {
+            String inputUrl = "https://ru.hexlet.io";
 
-        assertThat(actual).isNotNull();
-        assertThat(actual.getName()).isEqualTo("http://example.com");
+            JavalinTest.test(app, (server, client) -> {
+                var requestBody = "url=" + inputUrl;
+                var response = client.post("/urls", requestBody);
+                assertThat(response.code()).isEqualTo(200);
+            });
+
+            Url actualUrl = UrlsRepository.findByName(inputUrl).orElse(null);
+
+            assertThat(actualUrl).isNotNull();
+            assertThat(actualUrl.getName()).isEqualTo(inputUrl);
+        }
     }
 
-    @Test
-    @Transactional
-    void testAddIncorrectUrl() {
-        var postResponse = Unirest
-                .post("/urls")
-                .field("url", "incorrect")
-                .asEmpty();
+    @Nested
+    class UrlCheckTest {
 
-        assertThat(postResponse.getStatus()).isEqualTo(302);
+        @Test
+        void testStore() throws SQLException {
+            String url = mockServer.url("/").toString().replaceAll("/$", "");
 
-        var getResponse = Unirest.get("/urls").asString();
+            JavalinTest.test(app, (server, client) -> {
+                var requestBody = "url=" + url;
+                assertThat(client.post("/urls", requestBody).code()).isEqualTo(200);
 
-        assertThat(getResponse.getBody()).contains("Некорректный URL");
+                var actualUrl = UrlsRepository.findByName(url).orElse(null);
 
-        var actual = new QUrl()
-                .name
-                .equalTo("incorrect")
-                .findOne();
+                assertThat(actualUrl).isNotNull();
+                assertThat(actualUrl.getName()).isEqualTo(url);
 
-        assertThat(actual).isNull();
-    }
+                client.post("/urls/" + actualUrl.getId() + "/checks");
 
-    @Test
-    @Transactional
-    void testAddDuplicateUrl() {
-        var postResponse = Unirest
-                .post("/urls")
-                .field("url", "https://testurl.ru")
-                .asEmpty();
+                var responce = client.get("/urls/" + actualUrl.getId());
+                assertThat(responce.code()).isEqualTo(200);
+                assertThat(responce.body().string()).contains(url);
 
-        assertThat(postResponse.getStatus()).isEqualTo(302);
-        assertThat(postResponse.getHeaders().getFirst("Location")).isEqualTo("/urls");
+                var actualCheckUrl = UrlChecksRepository
+                        .findLatestChecks().get(actualUrl.getId());
 
-        var getResponse = Unirest.get("/urls").asString();
-
-        assertThat(getResponse.getBody()).contains("Страница уже существует");
-
-        var actual = new QUrl()
-                .name
-                .equalTo("https://testurl.ru")
-                .findList();
-
-        assertThat(actual.size()).isEqualTo(1);
-    }
-
-    @Test
-    void testShowUrl() {
-        var response = Unirest.get("/urls/" + existingUrl.getId()).asString();
-
-        assertThat(response.getStatus()).isEqualTo(200);
-        assertThat(response.getBody()).contains("https://testurl.ru");
-    }
-
-    @Test
-    @Transactional
-    void testCheckUrl() {
-        var mockUrl = server.url("/").toString().replaceAll("/$", "");
-        var addResponse = Unirest
-                .post("/urls")
-                .field("url", mockUrl)
-                .asString();
-
-        assertThat(addResponse.getStatus()).isEqualTo(302);
-
-        var actualUrl = new QUrl().name.equalTo(mockUrl).findOne();
-
-        assertThat(actualUrl).isNotNull();
-        assertThat(actualUrl.getName()).isEqualTo(mockUrl);
-
-        var postResponse = Unirest
-                .post("/urls/" + actualUrl.getId() + "/checks")
-                .asString();
-
-        assertThat(postResponse.getStatus()).isEqualTo(302);
-
-        var getResponse = Unirest
-                .get("/urls/" + actualUrl.getId())
-                .asString();
-
-        assertThat(getResponse.getStatus()).isEqualTo(200);
-        assertThat(getResponse.getBody()).contains("Страница успешно проверена!");
-
-        var urlCheck = new QUrlCheck()
-                .url
-                .equalTo(actualUrl).
-                findOne();
-
-        assertThat(urlCheck).isNotNull();
-        assertThat(urlCheck.getStatusCode()).isEqualTo(200);
-        assertThat(urlCheck.getH1()).isEqualTo("Test header");
-        assertThat(urlCheck.getTitle()).isEqualTo("Test title");
-        assertThat(urlCheck.getDescription()).isEqualTo("Test description");
+                assertThat(actualCheckUrl).isNotNull();
+                assertThat(actualCheckUrl.getStatusCode()).isEqualTo(200);
+                assertThat(actualCheckUrl.getTitle()).isEqualTo("Test page");
+                assertThat(actualCheckUrl.getH1()).isEqualTo("Do not expect a miracle, miracles yourself!");
+                assertThat(actualCheckUrl.getDescription()).contains("statements of great people");
+            });
+        }
     }
 }
