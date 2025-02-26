@@ -4,6 +4,6 @@ WORKDIR /app
 
 COPY /app .
 
-RUN gradle clean build
+RUN ["./gradlew", "clean", "build"]
 
-CMD gradle run
+CMD ["./gradlew", "run"]
